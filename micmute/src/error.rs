@@ -9,8 +9,10 @@ pub enum MiMuErrorKind {
 
 impl From<&MiMuErrorKind> for String {
     fn from(kind: &MiMuErrorKind) -> Self {
-        let variant: String = kind.into();
-        variant
+        let msg = match kind {
+            MiMuErrorKind::Misc(msg) => (*msg).into(),
+        };
+        msg
     }
 }
 
