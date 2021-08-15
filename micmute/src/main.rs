@@ -1,5 +1,8 @@
-use micmute_lib::error::MiMuResult;
+use micmute_lib::error::{MiMuError, MiMuErrorKind, MiMuResult};
 
-fn main() -> MiMuResult<()>{
-    Ok(())
+fn main() -> MiMuResult<()> {
+    let error = MiMuError::new(
+        MiMuErrorKind::Misc("Test error.")
+    );
+    Err(error)
 }

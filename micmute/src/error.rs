@@ -2,6 +2,25 @@ use std::{error::Error, fmt::Debug, fmt::Display,
     // io
 };
 
+#[derive(Debug)]
+pub enum MiMuErrorKind {
+    Misc(&'static str)
+}
+
+impl From<&MiMuErrorKind> for String {
+    fn from(kind: &MiMuErrorKind) -> Self {
+        let variant: String = kind.into();
+        variant
+    }
+}
+
+impl Display for MiMuErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg: String = self.into();
+        write!(f, "{}", msg)
+    }
+}
+
 /// Basic, ubiquitous Result type for micmute and its MiMuError.
 pub type MiMuResult<T> = Result<T, MiMuError>;
 
@@ -62,19 +81,19 @@ impl Error for MiMuWrappedError {
 
 /// Principal Error for anything micmute related.
 pub struct MiMuError {
-    msg: String,
+    kind: MiMuErrorKind,
     wrapped: Option<MiMuWrappedError>
 }
 
 impl Display for MiMuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.msg)
+        write!(f, "{:?}", self.kind)
     }
 }
 
 impl Debug for MiMuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{:?}", self.msg, match &self.wrapped {
+        write!(f, "{}{:?}", self.kind, match &self.wrapped {
             Some(e) => format!("[WRAPPED ERROR]: {}", e),
             None => String::new(), // Empty string.
         })
@@ -87,9 +106,9 @@ impl MiMuError {
     /// 
     /// This will set the wrapped error field to None.
     /// For wrapping errors, use ::wrap.
-    pub fn new(msg: &str) -> Self {
+    pub fn new(kind: MiMuErrorKind) -> Self {
         Self {
-            msg: msg.into(),
+            kind: kind,
             wrapped: None
         }
     }
@@ -97,9 +116,9 @@ impl MiMuError {
     /// Like ::new, but for wrapping third party errors.
     /// 
     /// This can only wrap errors for which MiMuWrappedError has a variant.
-    pub fn wrap(msg: &str, wrapped: MiMuWrappedError) -> Self {
+    pub fn wrap(kind: MiMuErrorKind, wrapped: MiMuWrappedError) -> Self {
         Self {
-            msg: msg.into(),
+            kind: kind,
             wrapped: Some(wrapped)
         }
     }
