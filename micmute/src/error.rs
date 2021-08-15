@@ -3,11 +3,11 @@ use std::{error::Error, fmt::Debug, fmt::Display,
 };
 
 /// Basic, ubiquitous Result type for micmute and its MiMuError.
-pub type MiMuResult<T> = Result<T, MiMuError>;
+pub type MiMuResult<T> = Result<T, MiMuError<MiMuErrorKind>>;
 
 /// Different error types that may be wrapped by a MiMuError.
-pub enum MiMuWrappedError {
-    MiMu(Box<MiMuError>),
+pub enum MiMuWrappedError<Kind> {
+    MiMu(Box<MiMuError<Kind>>),
     
     // io::Error currently serves as a sort of experimental test-dummy
     // in order to aid in developing the polymorphic aspects of everything
@@ -16,7 +16,7 @@ pub enum MiMuWrappedError {
     // Io(io::Error)
 }
 
-impl MiMuWrappedError {
+impl<Kind: 'static> MiMuWrappedError<Kind> {
     fn unwrap_as_display(&self) -> &dyn Display {
         match self {
             MiMuWrappedError::MiMu(e) => e,
@@ -40,19 +40,19 @@ impl MiMuWrappedError {
     }
 }
 
-impl Display for MiMuWrappedError {
+impl<Kind: 'static> Display for MiMuWrappedError<Kind> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.unwrap_as_display())
     }
 }
 
-impl Debug for MiMuWrappedError {
+impl<Kind: 'static> Debug for MiMuWrappedError<Kind> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.unwrap_as_debug())
     }
 }
 
-impl Error for MiMuWrappedError {
+impl<Kind: 'static> Error for MiMuWrappedError<Kind> {
 
     /// Calls .source on the error we're wrapping and returns the result.
     fn source(&self) -> Option<&(dyn Error + 'static)> {
@@ -60,19 +60,24 @@ impl Error for MiMuWrappedError {
     }
 }
 
-/// Principal Error for anything micmute related.
-pub struct MiMuError {
-    msg: String,
-    wrapped: Option<MiMuWrappedError>
+pub enum MiMuErrorKind {
+    Misc
 }
 
-impl Display for MiMuError {
+/// Principal Error for anything micmute related.
+pub struct MiMuError<Kind> {
+    kind: Kind,
+    msg: String,
+    wrapped: Option<MiMuWrappedError<Kind>>
+}
+
+impl<Kind: 'static> Display for MiMuError<Kind> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.msg)
     }
 }
 
-impl Debug for MiMuError {
+impl<Kind: 'static> Debug for MiMuError<Kind> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{:?}", self.msg, match &self.wrapped {
             Some(e) => format!("[WRAPPED ERROR]: {}", e),
@@ -81,14 +86,15 @@ impl Debug for MiMuError {
     }
 }
 
-impl MiMuError {
+impl<Kind: 'static> MiMuError<Kind> {
 
     /// Create new MiMuError with a message.
     /// 
     /// This will set the wrapped error field to None.
     /// For wrapping errors, use ::wrap.
-    pub fn new(msg: &str) -> Self {
+    pub fn new(kind: Kind, msg: &str) -> Self {
         Self {
+            kind: kind,
             msg: msg.into(),
             wrapped: None
         }
@@ -97,15 +103,17 @@ impl MiMuError {
     /// Like ::new, but for wrapping third party errors.
     /// 
     /// This can only wrap errors for which MiMuWrappedError has a variant.
-    pub fn wrap(msg: &str, wrapped: MiMuWrappedError) -> Self {
+    pub fn wrap(kind: Kind, msg: &str, wrapped: MiMuWrappedError<Kind>)
+    -> Self {
         Self {
+            kind: kind,
             msg: msg.into(),
             wrapped: Some(wrapped)
         }
     }
 }
 
-impl Error for MiMuError {
+impl<Kind: 'static> Error for MiMuError<Kind> {
 
     /// If we're wrapping an error, calls .source on it and returns
     /// the result.
